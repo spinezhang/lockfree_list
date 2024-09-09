@@ -23,6 +23,21 @@ protected:
         return true;
     }
 
+    /**
+     * Deletes a node in a lock-free bidirectional list.
+     *
+     * This function is used to delete a node in the list. It first checks if the node is the head node, if so, it
+     * updates the head_ to the new head node. If the node is not the head node, it updates the prev_ of the next node
+     * to the prev node. If the prev node is not valid, it updates the head_ to the next node. If the next node is not
+     * valid, it updates the tail_ to the prev node. If the prev node is not valid and the next node is valid, it
+     * updates the tail_ to the next node. If the prev node is valid and the next node is not valid, it updates the
+     * head_ to the prev node. Then it checks if the prev node and the next node is valid, if not, it calls fixDelete
+     * to fix the deletion.
+     *
+     * @param node The node to be deleted.
+     * @param prevNode The prev node of the node to be deleted.
+     * @param nextNode The next node of the node to be deleted.
+     */
     void deleteNodeBetween(LockFreeBiNode<T> *node, LockFreeBiNode<T> *prevNode, LockFreeBiNode<T> *nextNode) override {
         LockFreeBiNode<T>* actualNextNode = LockFreeList<LockFreeBiNode<T>>::GetNext(node); // maybe not same as origNextNode
         if (actualNextNode == node)
@@ -61,6 +76,18 @@ protected:
     }
 
 private:
+    /**
+     * Fixes the prev_ pointer of all nodes between actualPrevNode and actualNextNode.
+     *
+     * The function iterates from actualPrevNode to actualNextNode (exclusive) and checks if the prev_ pointer of each
+     * node is valid. If the prev_ pointer is invalid, the function updates the prev_ pointer to the correct node.
+     *
+     * The function is used to fix the prev_ pointers after a node is deleted.
+     *
+     * @param nextNode The next node of the node to be fixed.
+     * @param actualPrevNode The actual prev node of the node to be fixed.
+     * @param actualNextNode The actual next node of the node to be fixed.
+     */
     void fixPrev(LockFreeBiNode<T> *nextNode, LockFreeBiNode<T> *actualPrevNode, LockFreeBiNode<T> *actualNextNode) override {
         if (nextNode->isDeleted()) // may be changed
             actualNextNode = LockFreeList<LockFreeBiNode<T>>::GetNext(nextNode);
@@ -84,6 +111,14 @@ private:
         }
     }
 
+    /**
+     * Fixes the deletion of a node.
+     *
+     * This function is called after a node is deleted to fix the prev_ and next_ pointers of the adjacent nodes.
+     *
+     * @param prevNode The prev node of the node to be fixed.
+     * @param nextNode The next node of the node to be fixed.
+     */
     void fixDelete(LockFreeBiNode<T>* prevNode, LockFreeBiNode<T>* nextNode) {
         LockFreeBiNode<T>* actualPrevNode = prevNode;
         if (actualPrevNode != nullptr && actualPrevNode->isDeleted())

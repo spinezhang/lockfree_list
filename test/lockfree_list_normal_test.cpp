@@ -9,18 +9,18 @@ TEST_CASE_HEAD("normal test without concurrent, Push node from head and tail") {
     NodeType node1(1);
 
     list.InsertHead(&node1);
-    REQUIRE(list.GetHead() == &node1);
-    REQUIRE(list.GetTail() == &node1);
+    REQUIRE(list.Head() == &node1);
+    REQUIRE(list.Tail() == &node1);
 
     NodeType node2(2);
     list.Append(&node2);
-    REQUIRE(list.GetHead() == &node1);
-    REQUIRE(list.GetTail() == &node2);
+    REQUIRE(list.Head() == &node1);
+    REQUIRE(list.Tail() == &node2);
 
     NodeType node3(3);
     list.InsertHead(&node3);
-    REQUIRE(list.GetHead() == &node3);
-    REQUIRE(list.GetTail() == &node2);
+    REQUIRE(list.Head() == &node3);
+    REQUIRE(list.Tail() == &node2);
 
     REQUIRE(list.GetNext(&node3) == &node1);
     REQUIRE(list.GetNext(&node1) == &node2);
@@ -40,13 +40,13 @@ TEST_CASE_HEAD("normal test without concurrent, Insert node in the middle)") {
 
     NodeType node2(2);
     list.Append(&node2);
-    REQUIRE(list.GetHead() == &node1);
-    REQUIRE(list.GetTail() == &node2);
+    REQUIRE(list.Head() == &node1);
+    REQUIRE(list.Tail() == &node2);
 
     NodeType node3(3);
     list.Insert(&node3, &node1);
-    REQUIRE(list.GetHead() == &node3);
-    REQUIRE(list.GetTail() == &node2);
+    REQUIRE(list.Head() == &node3);
+    REQUIRE(list.Tail() == &node2);
 
     REQUIRE(list.GetNext(&node3) == &node1);
     REQUIRE(list.GetNext(&node1) == &node2);
@@ -65,8 +65,8 @@ TEST_CASE_HEAD("normal test without concurrent, Remove one node") {
     list.InsertHead(&node1);
 
     list.Remove(&node1);    
-    REQUIRE(list.GetHead() == nullptr);
-    REQUIRE(list.GetTail() == nullptr);
+    REQUIRE(list.Head() == nullptr);
+    REQUIRE(list.Tail() == nullptr);
 }
 
 TEST_CASE_HEAD("normal test without concurrent, Remove middle node") {
@@ -81,8 +81,8 @@ TEST_CASE_HEAD("normal test without concurrent, Remove middle node") {
     list.InsertHead(&node3);
 
     list.Remove(&node2);    
-    REQUIRE(list.GetHead() == &node3);
-    REQUIRE(list.GetTail() == &node1);
+    REQUIRE(list.Head() == &node3);
+    REQUIRE(list.Tail() == &node1);
     REQUIRE(list.GetPrev(&node3) == nullptr);
     REQUIRE(list.GetPrev(&node1) == &node3);
     REQUIRE(list.GetNext(&node1) == nullptr);

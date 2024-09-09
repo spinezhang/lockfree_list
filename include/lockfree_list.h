@@ -15,10 +15,30 @@ public:
 
     virtual ~LockFreeList() = default;
 
+    /**
+     * Inserts a new node at the head of the list.
+     * Continuously attempts to insert the new node until successful.
+     * NOTE: Set forceSuccess as true does not guarantee original order for sorted list,
+     * if you need to grant original order, set forceSuccess as false and keep the order before call this function.
+     *
+     * @param node The new node to be inserted.
+     * @param forceSuccess To grant the insertion successfully.
+     * @return True if the insertion is successful, false otherwise.
+     */
     bool InsertHead(NODE *node, bool forceSuccess=true) {
         return Insert(node, head_.load(), forceSuccess);
     }
 
+    /**
+     * Appends a new node at the tail of the list.
+     * Continuously attempts to insert the new node until successful.
+     * NOTE: Set forceSuccess as true does not guarantee original order for sorted list,
+     * if you need to grant original order, set forceSuccess as false and keep the order before call this function.
+     *
+     * @param node The new node to be appended.
+     * @param forceSuccess To grant the insertion successfully.
+     * @return True if the insertion is successful, false otherwise.
+     */
     bool Append(NODE *node, bool forceSuccess=true) {
         while(true) {
             bool result = InsertBetween(node, tail_.load(), nullptr);
@@ -28,18 +48,21 @@ public:
     }
 
 /**
- * Inserts a new node before a target node in the lock-free bidirectional list.
+ * Inserts a new node before a target node in the lock-free list.
  * Continuously attempts to insert the new node before the target node until successful.
- * 
+ * NOTE: Set forceSuccess as true does not guarantee original order for sorted list,
+ * if you need to grant original order, set forceSuccess as false and keep the order before call this function.
+ *
  * @param newNode The new node to be inserted.
  * @param targetNode The target node before which the new node should be inserted.
- * 
+ * @param forceSuccess To grant the insertion successfully.
+ * @param interFunc The test function to be called during the insertion process to modify the list.
  * @return True if the insertion is successful, false otherwise.
  */
 #ifdef TEST_MIDDLE_CHANGE
-    using TestFunc = std::function<void(int step, NODE *curentNode, NODE *prevNode, NODE *nextNode)>;
+    using InterferenceFunc = std::function<void(int step, NODE *curentNode, NODE *prevNode, NODE *nextNode)>;
 
-    bool Insert(NODE *newNode, NODE *targetNode, bool forceSuccess=true, TestFunc testFunc=nullptr) {
+    bool Insert(NODE *newNode, NODE *targetNode, bool forceSuccess=true, InterferenceFunc interFunc=nullptr) {
         int count = 0;
 #else
     bool Insert(NODE *newNode, NODE *targetNode, bool forceSuccess=true) {
@@ -55,7 +78,7 @@ public:
             bool result;
 #ifdef TEST_MIDDLE_CHANGE
             if (0 == count++)
-                result = InsertBetween(newNode, prevOfTarget, targetNode, testFunc);
+                result = InsertBetween(newNode, prevOfTarget, targetNode, interFunc);
             else
                 result = InsertBetween(newNode, prevOfTarget, targetNode);
 #else
@@ -66,12 +89,16 @@ public:
         }
     }
 
-    NODE *GetHead() {
+    NODE *Head() const {
         return head_.load();
     }
 
-    NODE *GetTail() {
+    NODE *Tail() const {
         return tail_.load();
+    }
+
+    int Size() const {
+        return size_.load();
     }
 
     NODE *GetNext(NODE *node) {
@@ -90,19 +117,29 @@ public:
     }
 
     NODE * PopHead(void) {
-        NODE* head = GetHead();
+        NODE* head = Head();
         if (nullptr == head || !deleteNode(head))
             return nullptr;
         return head;
     }
 
     NODE * PopTail(void) {
-        NODE* tail = GetTail();
+        NODE* tail = Tail();
         if (nullptr == tail || !deleteNode(tail))
             return nullptr;
         return tail;
     }
 
+    /**
+     * Removes a node from the lock-free list.
+     * Continuously attempts to remove the node until successful.
+     * NOTE: Set forceSuccess as true does not guarantee original order for sorted list,
+     * if you need to grant original order, set forceSuccess as false and keep the order before call this function.
+     *
+     * @param node The node to be removed.
+     * @param forceSuccess To grant the removal successfully.
+     * @return True if the removal is successful, false otherwise.
+     */
     bool Remove(NODE *node, bool forceSuccess=true) {
         if (node == nullptr || node->isDeleted()) {
             return false;
@@ -135,8 +172,19 @@ public:
         }
     }
 
+    /**
+     * This function is used for testing only. It checks the consistency of the lock-free list.
+     * This function only works in thread-safe mode and is used to check the consistency of the list.
+     * It checks the following conditions:
+     * 1. All nodes are not marked as deleted.
+     * 2. The next pointer of each node points to a valid node or nullptr.
+     * 3. If it is a Bidirectional list, the prev pointer of each node points to a valid node or nullptr.
+     * 4. The size of the list is correct.
+     * If any of the above conditions are not met, this function returns false, otherwise returns true.
+     * @param count The expected size of the list, if not provided, it is ignored.
+     * @return True if the list is consistent, false otherwise.
+     */
     bool CheckConsistence(int count = -1) {
-        // This help function doest not work in concurrency mode, it is only used in thread-safe mode to check the consistency of the list
         NODE *tempNode = this->head_.load();
 
         while(tempNode != nullptr && tempNode != nullptr) {
@@ -162,7 +210,18 @@ public:
     }
 
 #ifdef TEST_MIDDLE_CHANGE
-    bool InsertBetween(NODE* newNode, NODE* prevNode, NODE* nextNode, TestFunc testFunc=nullptr) {
+/**
+ * Inserts a new node between prevNode and nextNode in the lock-free list.
+ * If prevNode is nullptr, it is inserted at the head of the list.
+ * If nextNode is nullptr, it is inserted at the tail of the list.
+ * The function returns true if the insertion is successful, false otherwise.
+ * @param newNode The new node to be inserted.
+ * @param prevNode The prev node of the new node.
+ * @param nextNode The next node of the new node.
+ * @param interFunc The test function to be called during the insertion process to modify the list.
+ * @return True if the insertion is successful, false otherwise.
+ */
+    bool InsertBetween(NODE* newNode, NODE* prevNode, NODE* nextNode, InterferenceFunc interFunc=nullptr) {
 #else
 protected:
     bool InsertBetween(NODE* newNode, NODE* prevNode, NODE* nextNode) {
@@ -180,8 +239,8 @@ protected:
         newNode->next_.set(nextNode, false);
         setPrev(newNode, prevNode);
 #ifdef TEST_MIDDLE_CHANGE
-        if (testFunc)
-            testFunc(1, newNode, prevNode, nextNode);
+        if (interFunc)
+            interFunc(1, newNode, prevNode, nextNode);
 #endif
         // Step2: Update the next pointer of previous node first, if failed, means concurrently changed by another thread,
         // return failed and let the caller retry with updated prevNode or nextNode;
@@ -196,8 +255,8 @@ protected:
         this->size_.fetch_add(1);
 
 #ifdef TEST_MIDDLE_CHANGE
-        if (testFunc)
-            testFunc(2, newNode, prevNode, nextNode);
+        if (interFunc)
+            interFunc(2, newNode, prevNode, nextNode);
 #endif
 
         // Step3: Update the prev pointer of next node
@@ -209,8 +268,8 @@ protected:
         }
 
 #ifdef TEST_MIDDLE_CHANGE
-        if (testFunc)
-            testFunc(3, newNode, prevNode, nextNode);
+        if (interFunc)
+            interFunc(3, newNode, prevNode, nextNode);
 #endif
 
         bool breaked;
