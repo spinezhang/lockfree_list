@@ -1,0 +1,41 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(lldb) Attach",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "enter program name, for example ${workspaceFolder}/a.out",
+            "internalConsoleOptions": "neverOpen",
+            "MIMode": "lldb"
+        },
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "name": "Debug",
+            "MIMode": "lldb",
+            "windows": {
+                "program": "${workspaceFolder}/build/test/utilTest"
+            },
+            "linux": {
+                "program": "${workspaceFolder}/build/test/utilTest"
+            },
+            "osx": {
+                "program": "${workspaceFolder}/build/test/utilTest"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "cmake",
+            "request": "launch",
+            "name": "Debug portfile(s)",
+            "cmakeDebugType": "external",
+            "pipeName": "/tmp/vcpkg_ext_portfile_dbg",
+            "preLaunchTask": "Debug vcpkg commands"
+        }
+    ]
+}

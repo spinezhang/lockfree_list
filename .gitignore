@@ -1,0 +1,15 @@
+.idea/
+cmake-build-debug/
+build/
+.history/
+Testing/
+cmake-build-conan-debug-coverage/
+cmake_install.cmake
+CTestTestfile.cmake
+CMakeCache.txt
+CMakeFiles/
+Makefile
+dump.rdb
+.DS_Store
+utilTest
+*.TestMate.testListCache.txt
