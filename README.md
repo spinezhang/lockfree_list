@@ -15,7 +15,6 @@ This project implements a **lock-free single and bidirectional list** for concur
 
 ## How to Use
 
-1. **Include the Header**:
    ```cpp
    #include "lockfree_bilist.h"
    
