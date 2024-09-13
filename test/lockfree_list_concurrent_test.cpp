@@ -455,8 +455,8 @@ const int initListSize = 1000;
 const int threadCount = 4000;
 std::vector<std::thread> threads;
 #if (TEST_TYPE == TEST_TYPE_LIST)
-tbb::concurrent_vector<LockFreeNode<int>*> nodes;
-tbb::concurrent_vector<LockFreeNode<int> *> deletedNodes;
+tbb::concurrent_vector<shared_ptr<LockFreeNode<int>>> nodes;
+tbb::concurrent_vector<shared_ptr<LockFreeNode<int>>> deletedNodes;
 #else
 tbb::concurrent_vector<shared_ptr<LockFreeBiNode<int>>> nodes;
 tbb::concurrent_vector<shared_ptr<LockFreeBiNode<int>>> deletedNodes;

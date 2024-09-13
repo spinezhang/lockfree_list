@@ -97,8 +97,6 @@ public:
 
     shared_ptr<NODE> Tail() const {
         return atomic_load(&tail_);
-        // weak_ptr<NODE> weakTail = tail_.load();
-        // return weakTail.lock();
     }
 
     int Size() const {
@@ -155,10 +153,12 @@ public:
                 if (node == Tail() || nextNode == nullptr) {
                     headOrTail = updateTail(prevNode, node);
                 }
+
+                nextNode = getValidNext(node);
                 if (node == Head() || prevNode == nullptr) {
                     headOrTail = updateHead(nextNode, node);
                 }
-                if (!headOrTail) {
+                if (!headOrTail && nullptr != prevNode || nullptr != nextNode) {
                     deleteNodeBetween(node, prevNode, nextNode);
                 }
 
@@ -335,7 +335,7 @@ protected:
             nexOfNewNode = static_pointer_cast<NODE>(newNode->Next());
         if (node != newNode && nexOfNewNode != node)
             return node->next_.compareAndSet(nextNode, newNode, false, false);
-        return false;
+        return true;
     }
 
     bool isNodeIn(shared_ptr<NODE> node, shared_ptr<NODE> startNode, shared_ptr<NODE> endNode, bool reverse) {
@@ -373,10 +373,10 @@ protected:
         // Fix forward chain
         if (actualPrevNode != nullptr && !isNodeIn(node, actualPrevNode, actualNextNode, false)) {
             actualNextNode = getValidNext(actualPrevNode);
-            if (actualNextNode != nextNode)
+            if (actualNextNode != nextNode && (actualNextNode == nullptr || !actualNextNode->isDeleted()))
                 this->updateNext(node, actualNextNode, nextNode);
             this->updateNext(actualPrevNode, node);
-        } else if (node->Next() == nextNode && nextNode != actualNextNode)
+        } else if (node->Next() == nextNode && nextNode != actualNextNode && (actualNextNode == nullptr || !actualNextNode->isDeleted()))
             this->updateNext(node, actualNextNode, nextNode);
 
         // Fix backward chain

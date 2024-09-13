@@ -30,13 +30,9 @@ protected:
             if (nullptr == prevNode)
                 return nullptr;
             shared_ptr<LockFreeNode<T>> nextNode = prevNode->Next();
-            bool prevDeleted = prevNode->isDeleted();
-            if (nextNode == node && !prevDeleted) {
+            if (nextNode == node && !prevNode->isDeleted()) {
                 return prevNode;
             }
-            // if (prevDeleted && nextNode != nullptr && !nextNode->isDeleted() && this->Head() == prevNode) {
-            //     this->head_.store(nextNode.get());
-            // }
             prevNode = nextNode;
         }
     }
