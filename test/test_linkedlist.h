@@ -2,6 +2,8 @@
 #define LINKED_LIST_TEST_H__
 
 #include <catch.hpp>
+#include <memory>
+
 #define TEST_MIDDLE_CHANGE
 #include "lockfree_silist.h"
 #include "lockfree_bilist.h"
@@ -10,7 +12,7 @@
 #define TEST_TYPE_BILIST 2
 #define TEST_TYPE_TEMPLATE 3
 
-#define TEST_TYPE TEST_TYPE_LIST
+#define TEST_TYPE TEST_TYPE_BILIST
 
 #if (TEST_TYPE == TEST_TYPE_TEMPLATE)
 #define TEST_CASE_HEAD(description) \
@@ -35,5 +37,10 @@ TEMPLATE_TEST_CASE(description, "[lockfree][templated]", \
     using NodeType = LockFreeBiNode<int>;
 #endif
 #endif
+
+template <typename T>
+std::shared_ptr<T> MakeShared(T *node) {
+    return shared_ptr<T>(node, [](T *){});
+}
 
 #endif

@@ -11,15 +11,15 @@
 template<typename T>
 class LockFreeBiList : public LockFreeList<LockFreeBiNode<T>> {
 protected:
-    void setPrev(LockFreeBiNode<T> *node, LockFreeBiNode<T> *prevNode) override {
-        node->prev_.store(prevNode);
+    inline void setPrev(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>> prevNode) override {
+        node->prev_ = prevNode;
     }
 
-    LockFreeBiNode<T> *getPrev(LockFreeBiNode<T> *node) override {
+    inline shared_ptr<LockFreeBiNode<T>> getPrev(shared_ptr<LockFreeBiNode<T>> node) override {
         return node->Prev();
     }
 
-    bool hasPrev() override {
+    inline bool hasPrev() override {
         return true;
     }
 
@@ -38,22 +38,22 @@ protected:
      * @param prevNode The prev node of the node to be deleted.
      * @param nextNode The next node of the node to be deleted.
      */
-    void deleteNodeBetween(LockFreeBiNode<T> *node, LockFreeBiNode<T> *prevNode, LockFreeBiNode<T> *nextNode) override {
-        LockFreeBiNode<T>* actualNextNode = LockFreeList<LockFreeBiNode<T>>::GetNext(node); // maybe not same as origNextNode
+    void deleteNodeBetween(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>> prevNode, shared_ptr<LockFreeBiNode<T>> nextNode) override {
+        shared_ptr<LockFreeBiNode<T>> actualNextNode = this->getValidNext(node); // maybe not same as origNextNode
         if (actualNextNode == node)
             actualNextNode = nullptr;
-        LockFreeBiNode<T>* actualPrevNode = getValidPrev(node);
+        shared_ptr<LockFreeBiNode<T>> actualPrevNode = getValidPrev(node);
         bool result;
         if (actualPrevNode != nullptr) {
-            result = LockFreeList<LockFreeBiNode<T>>::updateNext(actualPrevNode, actualNextNode);
+            result = this->updateNext(actualPrevNode, actualNextNode);
         } else {
-            result = updateHead(this->head_.load(), actualNextNode);
+            result = updateHead(this->Head(), actualNextNode);
         }
 
         if (actualNextNode != nullptr) {
             updatePrev(actualNextNode, actualPrevNode);
         } else {
-            LockFreeList<LockFreeBiNode<T>>::updateTail(this->tail_.load(), actualPrevNode);
+            this->updateTail(this->Tail(), actualPrevNode);
         }
         if (actualPrevNode != nullptr || actualNextNode != nullptr) {
             if (!result || actualPrevNode != prevNode || actualNextNode != nextNode)
@@ -61,14 +61,14 @@ protected:
         }
     }
 
-    bool isWrongConnection(LockFreeBiNode<T> *node, LockFreeBiNode<T> *nextNode) override {
+    bool isWrongConnection(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>> nextNode) override {
         return nextNode->Prev() != node || node->Next() != nextNode;
     }
 
-    LockFreeBiNode<T>* getValidPrev(LockFreeBiNode<T>* node) override {
+    shared_ptr<LockFreeBiNode<T>> getValidPrev(shared_ptr<LockFreeBiNode<T>> node) override {
         if (nullptr == node)
             return nullptr;
-        LockFreeBiNode<T>* prevNode = node->Prev();
+        shared_ptr<LockFreeBiNode<T>> prevNode = node->Prev();
         while (prevNode != nullptr && prevNode->isDeleted()) {
             prevNode = prevNode->Prev();
         }
@@ -88,21 +88,21 @@ private:
      * @param actualPrevNode The actual prev node of the node to be fixed.
      * @param actualNextNode The actual next node of the node to be fixed.
      */
-    void fixPrev(LockFreeBiNode<T> *nextNode, LockFreeBiNode<T> *actualPrevNode, LockFreeBiNode<T> *actualNextNode) override {
+    void fixPrev(shared_ptr<LockFreeBiNode<T>> nextNode, shared_ptr<LockFreeBiNode<T>> actualPrevNode, shared_ptr<LockFreeBiNode<T>> actualNextNode) override {
         if (nextNode->isDeleted()) // may be changed
-            actualNextNode = LockFreeList<LockFreeBiNode<T>>::GetNext(nextNode);
+            actualNextNode = this->getValidNext(nextNode);
         if (actualNextNode == nullptr)
             return;
         if (actualPrevNode != nullptr) {
-            LockFreeBiNode<T>* tempNode = actualPrevNode;
+            shared_ptr<LockFreeBiNode<T>> tempNode = actualPrevNode;
             while (tempNode != nullptr && tempNode != actualNextNode->Next()) {
-                LockFreeBiNode<T>* tempNext = tempNode->Next();
-                LockFreeBiNode<T>* temPrevOfNext = nullptr;
+                shared_ptr<LockFreeBiNode<T>> tempNext = static_pointer_cast<LockFreeBiNode<T>>(tempNode->Next());
+                shared_ptr<LockFreeBiNode<T>> temPrevOfNext = nullptr;
                 if (tempNext != nullptr)
                     temPrevOfNext = getValidPrev(tempNext);
-                if (tempNext != nullptr && !tempNext->isDeleted() && temPrevOfNext != tempNext) {
+                if (tempNext != nullptr && !tempNext->isDeleted() && temPrevOfNext != tempNext && tempNext->Prev() != tempNode) {
                     if (temPrevOfNext == nullptr ||
-                        LockFreeList<LockFreeBiNode<T>>::isNodeIn(temPrevOfNext, actualPrevNode, actualNextNode->Next(), false)) {
+                        this->isNodeIn(temPrevOfNext, actualPrevNode, static_pointer_cast<LockFreeBiNode<T>>(actualNextNode->Next()), false)) {
                         updatePrev(tempNext, tempNode);
                     }
                 }
@@ -119,25 +119,23 @@ private:
      * @param prevNode The prev node of the node to be fixed.
      * @param nextNode The next node of the node to be fixed.
      */
-    void fixDelete(LockFreeBiNode<T>* prevNode, LockFreeBiNode<T>* nextNode) {
-        LockFreeBiNode<T>* actualPrevNode = prevNode;
-        if (actualPrevNode != nullptr && actualPrevNode->isDeleted())
-        {
+    void fixDelete(shared_ptr<LockFreeBiNode<T>> prevNode, shared_ptr<LockFreeBiNode<T>> nextNode) {
+        shared_ptr<LockFreeBiNode<T>> actualPrevNode = prevNode;
+        if (actualPrevNode != nullptr && actualPrevNode->isDeleted()) {
             actualPrevNode = getValidPrev(prevNode);
         }
-        LockFreeBiNode<T>* actualNextNode = nextNode;
-        if (actualNextNode != nullptr && actualNextNode->isDeleted())
-        {
-            actualNextNode = LockFreeList<LockFreeBiNode<T>>::GetNext(nextNode);
+        shared_ptr<LockFreeBiNode<T>> actualNextNode = nextNode;
+        if (actualNextNode != nullptr && actualNextNode->isDeleted()) {
+            actualNextNode = this->getValidNext(nextNode);
         }
 
         if (actualPrevNode == nullptr)
             updateHead(actualNextNode);
 
         if ((actualNextNode == nullptr || actualPrevNode == actualNextNode))
-            LockFreeList<LockFreeBiNode<T>>::updateTail(actualPrevNode);
+            this->updateTail(actualPrevNode);
         else if (actualPrevNode != nullptr && actualNextNode != nextNode) {
-            LockFreeList<LockFreeBiNode<T>>::updateNext(actualPrevNode, actualNextNode);
+            this->updateNext(actualPrevNode, actualNextNode);
         }
 
         // Fix backward chain
@@ -145,23 +143,23 @@ private:
             fixPrev(nextNode, actualPrevNode, actualNextNode);
     }
 
-    bool updateHead(LockFreeBiNode<T> *node, LockFreeBiNode<T> *prevHead=nullptr) override {
+    bool updateHead(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>>prevHead=nullptr) override {
         bool result = LockFreeList<LockFreeBiNode<T>>::updateHead(node, prevHead);
         if (result && node != nullptr) {
-            node->prev_.store(nullptr);
+            node->prev_ = nullptr;
         }
         return result;
     }
 
-    void updatePrev(LockFreeBiNode<T> *node, LockFreeBiNode<T> *newNode, LockFreeBiNode<T> *prevNode=nullptr) override {
+    void updatePrev(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>> newNode, shared_ptr<LockFreeBiNode<T>> prevNode=nullptr) override {
         if (prevNode == nullptr)
             prevNode = node->Prev();
         // avoid ABA
-        LockFreeBiNode<T>* prevOfNewNode = nullptr;
+        shared_ptr<LockFreeBiNode<T>> prevOfNewNode(nullptr);
         if(newNode != nullptr)
-            prevOfNewNode = newNode->Prev();
+            prevOfNewNode = static_pointer_cast<LockFreeBiNode<T>>(newNode->Prev());
         if (node != newNode && prevOfNewNode != node)
-            node->prev_.compare_exchange_strong(prevNode, newNode);
+            node->prev_ = newNode;
     }
 };
 

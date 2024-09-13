@@ -7,36 +7,36 @@
 template<typename T>
 class LockFreeSiList : public LockFreeList<LockFreeNode<T>> {
 protected:
-    void deleteNodeBetween(LockFreeNode<T> *node, LockFreeNode<T> *prevNode, LockFreeNode<T> *nextNode) override {
+    void deleteNodeBetween(shared_ptr<LockFreeNode<T>> node, shared_ptr<LockFreeNode<T>> prevNode, shared_ptr<LockFreeNode<T>> nextNode) override {
         if (nextNode == node)
             nextNode = nullptr;
         if (nextNode == nullptr) // Mark as delete first, then do the deletion
-            LockFreeList<LockFreeNode<T>>::updateTail(prevNode);
+            this->updateTail(prevNode);
         if (prevNode != nullptr) {
-            LockFreeList<LockFreeNode<T>>::updateNext(prevNode, nextNode);
+            this->updateNext(prevNode, nextNode);
         } else
-            LockFreeList<LockFreeNode<T>>::updateHead(nextNode);
+            this->updateHead(nextNode);
     }
 
-    bool isWrongConnection(LockFreeNode<T> *node, LockFreeNode<T> *nextNode) override {
+    bool isWrongConnection(shared_ptr<LockFreeNode<T>> node, shared_ptr<LockFreeNode<T>> nextNode) override {
         return node->Next() != nextNode;
     }
 
-    LockFreeNode<T>* getValidPrev(LockFreeNode<T>* node) override {
+    shared_ptr<LockFreeNode<T>> getValidPrev(shared_ptr<LockFreeNode<T>> node) override {
         if (nullptr == node)
-            return this->tail_.load();
-        LockFreeNode<T>* prevNode = this->head_.load();
+            return this->Tail();
+        auto prevNode = this->Head();
         while (true) {
             if (nullptr == prevNode)
                 return nullptr;
-            LockFreeNode<T>* nextNode = prevNode->Next();
+            shared_ptr<LockFreeNode<T>> nextNode = prevNode->Next();
             bool prevDeleted = prevNode->isDeleted();
             if (nextNode == node && !prevDeleted) {
                 return prevNode;
             }
-            if (prevDeleted && nextNode != nullptr && !nextNode->isDeleted() && this->head_.load() == prevNode) {
-                this->head_.store(nextNode);
-            }
+            // if (prevDeleted && nextNode != nullptr && !nextNode->isDeleted() && this->Head() == prevNode) {
+            //     this->head_.store(nextNode.get());
+            // }
             prevNode = nextNode;
         }
     }

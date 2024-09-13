@@ -7,25 +7,29 @@
 
 #include "lockfree_node.h"
 
-template<typename T>
-struct LockFreeBiNode : LockFreeNode<T> {
-    std::atomic<LockFreeBiNode<T> *> prev_;
+template <typename T>
+struct LockFreeBiNode : LockFreeNode<T>
+{
+    shared_ptr<LockFreeBiNode<T>> prev_;
 
     LockFreeBiNode(T data) : LockFreeNode<T>(data) {}
 
     virtual ~LockFreeBiNode() {}
 
-    LockFreeBiNode<T> *Next() override {
-        return dynamic_cast<LockFreeBiNode<int>*>(LockFreeNode<T>::Next());
+    // Override Next to return bidirectional node
+    shared_ptr<LockFreeNode<T>> Next() override {
+        // Cast the base class's next pointer to the derived class type
+        return LockFreeNode<T>::Next();
     }
 
+    // Check if this node is logically deleted
     bool isDeleted() override {
         return LockFreeNode<T>::isDeleted();
     }
 
-    LockFreeBiNode<T> *Prev() {
-        return prev_.load();
+    // Retrieve the previous node
+    shared_ptr<LockFreeBiNode<T>> Prev() {
+        return prev_;
     }
 };
-
 #endif //BINODE_H

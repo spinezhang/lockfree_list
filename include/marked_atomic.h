@@ -6,53 +6,58 @@
 #include <memory>
 #include <tuple>
 
+#include <memory>
+#include <atomic>
+#include <utility>
+#include <functional>
+
+using namespace std;
+
 template<typename T>
-class MarkedAmotic {
+class MarkedAtomic {
 public:
-    MarkedAmotic() {
+    MarkedAtomic() {
         set(nullptr, false);
     }
-    MarkedAmotic(T* initialPtr, bool initialMark) {
-        set(initialPtr, initialMark);
+
+    MarkedAtomic(shared_ptr<T> ptr, bool mark) {
+        set(ptr, mark);
     }
 
-    virtual ~MarkedAmotic() {}
+    virtual ~MarkedAtomic() {}
 
-    bool compareAndSet(T* oldPtr, T* newPtr, bool oldMark, bool newMark) {
-        T* oldCombined = combine(oldPtr, oldMark);
-        T* newCombined = combine(newPtr, newMark);
+    // Compare and set the value atomically
+    inline bool compareAndSet(shared_ptr<T> oldPtr, shared_ptr<T> newPtr, bool oldMark, bool newMark) {
+        T* oldCombined = reinterpret_cast<T*>(uintptr_t(oldPtr.get()) | oldMark);
+        T* newCombined = reinterpret_cast<T*>(uintptr_t(newPtr.get()) | newMark);
         return combined.compare_exchange_strong(oldCombined, newCombined);
     }
 
-    std::pair<T*, bool> get() const {
-        uintptr_t combinedVal = reinterpret_cast<uintptr_t>(combined.load());
-        T* ptr = reinterpret_cast<T*>(combinedVal & ~uintptr_t(1));
-        bool mark = combinedVal & uintptr_t(1);
+    // Get the current pointer and mark value
+    inline pair<shared_ptr<T>, bool> get() const {
+        T* combinedVal = combined.load();
+        shared_ptr<T> ptr(reinterpret_cast<T*>(uintptr_t(combinedVal) & ~uintptr_t(1)), [](T *){});
+        bool mark = uintptr_t(combinedVal) & uintptr_t(1);
         return {ptr, mark};
     }
 
-    T* getPtr() const {
+    // Get the raw pointer
+    inline shared_ptr<T> getPtr() const {
         return get().first;
     }
 
-    bool isMarked() const {
+    // Check if the node is logically deleted
+    inline bool isMarked() const {
         return get().second;
     }
 
-    void set(T* newPtr, bool newMark) {
-        combined.store(combine(newPtr, newMark));
-    }
-
-    bool isNull() const {
-        return getPtr() == nullptr;
+    // Set the pointer and mark value
+    inline void set(shared_ptr<T> ptr, bool mark) {
+        uintptr_t value = reinterpret_cast<uintptr_t>(ptr.get()) | mark;
+        combined.store(reinterpret_cast<T*>(value));
     }
 
 private:
-    std::atomic<T *> combined;
-
-    static T* combine(T* ptr, bool mark) {
-        return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(ptr) | mark);
-    }
+    atomic<T*> combined;  // Use uintptr_t to store both pointer and mark flag
 };
-
 #endif

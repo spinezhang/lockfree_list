@@ -9,7 +9,7 @@
 
 template<typename T>
 struct LockFreeNode {
-    MarkedAmotic<LockFreeNode<T>> next_;
+    MarkedAtomic<LockFreeNode<T>> next_;
     T data_;
 
     LockFreeNode() {}
@@ -18,8 +18,12 @@ struct LockFreeNode {
 
     virtual ~LockFreeNode() {}
 
-    virtual LockFreeNode<T> *Next() {
+    virtual shared_ptr<LockFreeNode<T>> Next() {
         return next_.getPtr();
+    }
+
+    virtual void SetNext(shared_ptr<LockFreeNode<T>> node) {
+        next_.set(node, false);
     }
 
     virtual bool isDeleted() {
