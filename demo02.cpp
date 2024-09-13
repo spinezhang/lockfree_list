@@ -13,17 +13,17 @@
 unsigned seed;
 
 struct NodesItem {
-  std::set< shared_ptr<LockFreeNode<uint64_t>>> nodes;
+  std::set< shared_ptr<LockFreeBiNode<uint64_t>>> nodes;
   std::mutex mtx;
 
   NodesItem() : nodes(), mtx() {}
 
-  void add_node( shared_ptr<LockFreeNode<uint64_t>> node) {
+  void add_node( shared_ptr<LockFreeBiNode<uint64_t>> node) {
     std::lock_guard<std::mutex> lock(mtx);
     nodes.insert(node);
   }
 
-   shared_ptr<LockFreeNode<uint64_t>> remove_node() {
+   shared_ptr<LockFreeBiNode<uint64_t>> remove_node() {
     std::lock_guard<std::mutex> lock(mtx);
 
     if (nodes.empty()) {
@@ -36,7 +36,7 @@ struct NodesItem {
 
     auto it = nodes.begin();
     std::advance(it, dis(gen));  // 移动迭代器到随机位置
-     shared_ptr<LockFreeNode<uint64_t>> node = *it;
+     shared_ptr<LockFreeBiNode<uint64_t>> node = *it;
     nodes.erase(it);
 
     return node;
@@ -52,7 +52,7 @@ int main() {
   std::cout << "hello cxx" << std::endl;
 
   seed = std::chrono::system_clock::now().time_since_epoch().count();
-  LockFreeSiList<uint64_t> list;
+  LockFreeBiList<uint64_t> list;
 
   std::vector<std::thread> threads01;
   std::vector<std::thread> threads02;
@@ -66,7 +66,7 @@ int main() {
     threads01.push_back(std::thread([&]() {
       while (true) {
         uint64_t random = generateRandomUint64();
-        shared_ptr<LockFreeNode<uint64_t>> node = make_shared<LockFreeNode<uint64_t>>(random);
+        shared_ptr<LockFreeBiNode<uint64_t>> node = make_shared<LockFreeBiNode<uint64_t>>(random);
         list.Append(node);
         nodes01[i].add_node(node);
       }
@@ -77,7 +77,7 @@ int main() {
     threads02.push_back(std::thread([&]() {
       while (true) {
         uint64_t random = generateRandomUint64();
-        shared_ptr<LockFreeNode<uint64_t>> node = make_shared<LockFreeNode<uint64_t>>(random);
+        shared_ptr<LockFreeBiNode<uint64_t>> node = make_shared<LockFreeBiNode<uint64_t>>(random);
         list.InsertHead(node);
         nodes02[i].add_node(node);
       }
@@ -87,11 +87,11 @@ int main() {
   for (int i = 0; i < 99; ++i) {
     threads03.push_back(std::thread([&]() {
       while (true) {
-         shared_ptr<LockFreeNode<uint64_t>> node = nodes01[i].remove_node();
+         shared_ptr<LockFreeBiNode<uint64_t>> node = nodes01[i].remove_node();
         if (node == nullptr) {
           continue;
         }
-        list.Remove(shared_ptr<LockFreeNode<uint64_t>>(node));
+        list.Remove(shared_ptr<LockFreeBiNode<uint64_t>>(node));
           // delete node;
       }
     }));
@@ -100,12 +100,12 @@ int main() {
   for (int i = 0; i < 99; ++i) {
     threads04.push_back(std::thread([&]() {
       while (true) {
-         shared_ptr<LockFreeNode<uint64_t>> node = nodes02[i].remove_node();
+         shared_ptr<LockFreeBiNode<uint64_t>> node = nodes02[i].remove_node();
         if (node == nullptr) {
           continue;
         }
 
-        list.Remove(shared_ptr<LockFreeNode<uint64_t>>(node));
+        list.Remove(shared_ptr<LockFreeBiNode<uint64_t>>(node));
           // delete node;
       }
     }));
