@@ -1,9 +1,9 @@
 #ifndef LOCKFREE_LIST_H__
 #define LOCKFREE_LIST_H__
 
-#include <atomic>
 #include <memory>
 #include <functional>
+#include <iostream>
 
 template<typename NODE>
 class LockFreeList {
@@ -147,7 +147,7 @@ public:
             shared_ptr<NODE> nextNode = static_pointer_cast<NODE>(node->Next());
 
             // mark as delete first
-            if (node->next_.compareAndSet(nextNode, nullptr, false, true)) {
+            if (node->Delete(nextNode)) {
                 shared_ptr<NODE> prevNode = getValidPrev(node);
                 bool headOrTail = false;
                 if (node == Tail() || nextNode == nullptr) {
@@ -189,7 +189,7 @@ public:
         int i = 0;
         while(tempNode != nullptr && tempNode != nullptr) {
             if (tempNode->isDeleted()) {
-                cout << "fatal: " << tempNode.get() << " is deleted" << endl;
+                std::cout << "fatal: " << tempNode.get() << " is deleted" << endl;
                 return false;
             }
             shared_ptr<NODE> nextNode = static_pointer_cast<NODE>(tempNode->Next());
@@ -334,7 +334,7 @@ protected:
         if (newNode != nullptr)
             nexOfNewNode = static_pointer_cast<NODE>(newNode->Next());
         if (node != newNode && nexOfNewNode != node)
-            return node->next_.compareAndSet(nextNode, newNode, false, false);
+            return node->CompareAndSetNext(nextNode, newNode);
         return true;
     }
 

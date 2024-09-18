@@ -29,7 +29,11 @@ struct LockFreeBiNode : LockFreeNode<T>
 
     // Retrieve the previous node
     shared_ptr<LockFreeBiNode<T>> Prev() {
-        return prev_;
+        return atomic_load(&prev_);
+    }
+
+    void SetPrev(shared_ptr<LockFreeBiNode<T>> node) {
+        atomic_store(&prev_, node);
     }
 };
 #endif //BINODE_H

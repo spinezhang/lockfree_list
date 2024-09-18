@@ -12,7 +12,7 @@ template<typename T>
 class LockFreeBiList : public LockFreeList<LockFreeBiNode<T>> {
 protected:
     inline void setPrev(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>> prevNode) override {
-        node->prev_ = prevNode;
+        node->SetPrev(prevNode);
     }
 
     inline shared_ptr<LockFreeBiNode<T>> getPrev(shared_ptr<LockFreeBiNode<T>> node) override {
@@ -23,21 +23,6 @@ protected:
         return true;
     }
 
-    /**
-     * Deletes a node in a lock-free bidirectional list.
-     *
-     * This function is used to delete a node in the list. It first checks if the node is the head node, if so, it
-     * updates the head_ to the new head node. If the node is not the head node, it updates the prev_ of the next node
-     * to the prev node. If the prev node is not valid, it updates the head_ to the next node. If the next node is not
-     * valid, it updates the tail_ to the prev node. If the prev node is not valid and the next node is valid, it
-     * updates the tail_ to the next node. If the prev node is valid and the next node is not valid, it updates the
-     * head_ to the prev node. Then it checks if the prev node and the next node is valid, if not, it calls fixDelete
-     * to fix the deletion.
-     *
-     * @param node The node to be deleted.
-     * @param prevNode The prev node of the node to be deleted.
-     * @param nextNode The next node of the node to be deleted.
-     */
     void deleteNodeBetween(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>> prevNode, shared_ptr<LockFreeBiNode<T>> nextNode) override {
         shared_ptr<LockFreeBiNode<T>> actualNextNode = this->getValidNext(node); // maybe not same as origNextNode
         if (actualNextNode == node)
@@ -76,18 +61,6 @@ protected:
     }
 
 private:
-    /**
-     * Fixes the prev_ pointer of all nodes between actualPrevNode and actualNextNode.
-     *
-     * The function iterates from actualPrevNode to actualNextNode (exclusive) and checks if the prev_ pointer of each
-     * node is valid. If the prev_ pointer is invalid, the function updates the prev_ pointer to the correct node.
-     *
-     * The function is used to fix the prev_ pointers after a node is deleted.
-     *
-     * @param nextNode The next node of the node to be fixed.
-     * @param actualPrevNode The actual prev node of the node to be fixed.
-     * @param actualNextNode The actual next node of the node to be fixed.
-     */
     void fixPrev(shared_ptr<LockFreeBiNode<T>> nextNode, shared_ptr<LockFreeBiNode<T>> actualPrevNode, shared_ptr<LockFreeBiNode<T>> actualNextNode) override {
         if (nextNode->isDeleted()) // may be changed
             actualNextNode = this->getValidNext(nextNode);
@@ -111,14 +84,6 @@ private:
         }
     }
 
-    /**
-     * Fixes the deletion of a node.
-     *
-     * This function is called after a node is deleted to fix the prev_ and next_ pointers of the adjacent nodes.
-     *
-     * @param prevNode The prev node of the node to be fixed.
-     * @param nextNode The next node of the node to be fixed.
-     */
     void fixDelete(shared_ptr<LockFreeBiNode<T>> prevNode, shared_ptr<LockFreeBiNode<T>> nextNode) {
         shared_ptr<LockFreeBiNode<T>> actualPrevNode = prevNode;
         if (actualPrevNode != nullptr && actualPrevNode->isDeleted()) {
@@ -146,7 +111,7 @@ private:
     bool updateHead(shared_ptr<LockFreeBiNode<T>> node, shared_ptr<LockFreeBiNode<T>>prevHead=nullptr) override {
         bool result = LockFreeList<LockFreeBiNode<T>>::updateHead(node, prevHead);
         if (result && node != nullptr) {
-            node->prev_ = nullptr;
+            node->SetPrev(nullptr);
         }
         return result;
     }
@@ -159,7 +124,7 @@ private:
         if(newNode != nullptr)
             prevOfNewNode = static_pointer_cast<LockFreeBiNode<T>>(newNode->Prev());
         if (node != newNode && prevOfNewNode != node)
-            node->prev_ = newNode;
+            node->SetPrev(newNode);
     }
 };
 
