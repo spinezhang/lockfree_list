@@ -161,6 +161,7 @@ public:
                 if (!headOrTail && nullptr != prevNode || nullptr != nextNode) {
                     deleteNodeBetween(node, prevNode, nextNode);
                 }
+                setPrev(node, nullptr);
 
                 this->size_.fetch_add(-1);
                 return true;
@@ -314,7 +315,8 @@ protected:
     virtual bool updateHead(shared_ptr<NODE> node, shared_ptr<NODE> prevHead=nullptr) {
         if (prevHead == nullptr)
             prevHead = this->head_;
-        return atomic_compare_exchange_weak(&this->head_, &prevHead, node);
+        if (atomic_compare_exchange_weak(&this->head_, &prevHead, node) && nullptr != node)
+            setPrev(node, nullptr);
     }
 
     virtual bool updateTail(shared_ptr<NODE> node, shared_ptr<NODE> prevTail = nullptr) {
