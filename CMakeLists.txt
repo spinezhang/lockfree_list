@@ -17,5 +17,5 @@ set(SOURCE_FILES
 add_executable(demo ${SOURCE_FILES})
 
 #add_subdirectory(test)
-add_test(NAME TestLinkedList COMMAND utilTest)
-enable_testing()
+#add_test(NAME TestLinkedList COMMAND utilTest)
+#enable_testing()

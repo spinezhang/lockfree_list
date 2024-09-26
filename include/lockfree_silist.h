@@ -34,9 +34,9 @@ protected:
 
     shared_ptr<LockFreeNode<T>> getValidPrev(shared_ptr<LockFreeNode<T>> node) override {
         if (nullptr == node)
-            return this->Tail();
-        auto prevNode = this->Head();
-        while (nullptr != prevNode && prevNode->Next() != node && !prevNode->isDeleted()) {
+            return nullptr;
+        shared_ptr<LockFreeNode<T>> prevNode = this->Head();
+        while (nullptr != prevNode && prevNode->Next() != node && prevNode->isDeleted()) {
             prevNode = prevNode->Next();
         }
         if (prevNode == node)
